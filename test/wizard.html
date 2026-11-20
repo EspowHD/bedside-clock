@@ -1,0 +1,266 @@
+<!doctype html><meta charset="utf-8"><body><div id="host"></div><pre id="out">running</pre>
+<script type="module">
+import "../dist/bedside-clock-strategy.js";
+const res=[]; const ok=(n,c)=>res.push((c?"PASS ":"FAIL ")+n);
+const el=document.createElement("bedside-clock-setup-card");
+el.hass={states:{}, callWS: async()=>({})};
+document.getElementById("host").appendChild(el);
+el.setConfig({type:"custom:bedside-clock-setup-card"});
+const qa2=(e)=>[...e.querySelectorAll(".tile")];
+const q=(s)=>el.querySelector(s), qa=(s)=>[...el.querySelectorAll(s)];
+const next=()=>qa("button.btn.primary")[0].click();
+ok("starts on deps", q("h2").textContent==="Before you start");
+next(); ok("device step", q("h2").textContent.startsWith("Which device"));
+qa(".tile")[1].click(); ok("echo8 selected", el._config.device==="echo_show_8");
+next(); ok("Kiosk Satellite question comes after the device", q("h2").textContent==="Are you using Kiosk Satellite?" && qa(".tile").length===2 && !q("ha-form"));
+next(); ok("Navigation step comes next, with a picture of the Home page with and without the navbar", q("h2").textContent==="Navigation" && qa(".tile").length===2 && qa("img.shot").length===2 && qa("img.shot").every(x=>x.src.startsWith("data:image/jpeg")));
+next(); ok("background step: 6 gradients, none and custom (no bundled photos)", qa(".tile").length===8 && !qa(".tile").some(t=>t.textContent.includes("Rocket ship")));
+qa(".tile")[1].click(); ok("ocean", el._config.background==="ocean");
+next(); ok("pages step", qa(".tile").length===8);
+qa(".tile")[1].click(); ok("baby enabled", el._config.pages.baby.enabled);
+next(); ok("home config step", q("h2").textContent==="Home page");
+next(); ok("baby step", q("h2").textContent==="Baby monitor page");
+next(); ok("validation blocks empty camera", q(".err") && q("h2").textContent==="Baby monitor page");
+el._config.pages.baby.camera="camera.x"; next(); ok("Visual settings is the last step before the review", q("h2").textContent==="Visual settings");
+next(); ok("review", q("h2").textContent==="All set" && qa(".sum").length===6);
+ok("save button", qa("button.btn.primary")[0].textContent==="Save and reload");
+qa(".dot")[0].click(); ok("dot jump back", q("h2").textContent==="Before you start");
+{ const el2=document.createElement("bedside-clock-setup-card"); el2.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(el2);
+  el2.setConfig({type:"custom:bedside-clock-setup-card"}); el2._config.pages.home.layout="controls4"; el2._step=0;
+  let err=""; try { el2._render(); } catch(e) { err=String(e); }
+  ok("deps step renders when a Home tile layout needs Bubble Card (no crash)", !err && el2.textContent.includes("Home tiles")); }
+{ const mk=(device,layout)=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+    e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device=device; e._config.pages.home.layout=layout; e._config.pages.home.quick_buttons=[{entity:"light.a"},{entity:"light.b"},{entity:"light.c"},{entity:"light.d"},{entity:"light.e"}]; e._step=e._steps().indexOf("home"); e._render(); return e; };
+  const cards=(e)=>[...e.querySelectorAll("h3")].map(t=>t.textContent).filter(t=>/^Card [0-9]$/.test(t));
+  const e2=mk("echo_show_8","controls"), e4=mk("echo_show_8","controls4"), s5=mk("echo_show_5","controls4");
+  ok("Home step wording: Clock + 2 Cards and Clock + 4 Cards", [...e2.querySelectorAll(".t")].some(t=>t.textContent==="Clock + 2 Cards") && [...e2.querySelectorAll(".t")].some(t=>t.textContent==="Clock + 4 Cards") && ![...e2.querySelectorAll(".t")].some(t=>/controls/i.test(t.textContent)));
+  ok("Clock + 2 Cards shows exactly Card 1 and Card 2, even if more were stored, with no add or remove", cards(e2).join()==="Card 1,Card 2" && ![...e2.querySelectorAll("button")].some(b=>/Add|Remove/.test(b.textContent)));
+  ok("Clock + 4 Cards shows Card 1 to Card 4", cards(e4).join()==="Card 1,Card 2,Card 3,Card 4");
+  ok("Echo Show 5 also offers Clock + 4 Cards and shows Card 1 to Card 4", cards(s5).join()==="Card 1,Card 2,Card 3,Card 4" && [...s5.querySelectorAll(".t")].some(t=>t.textContent==="Clock + 4 Cards")); }
+{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+  e.setConfig({type:"custom:bedside-clock-setup-card"});
+  e._step=e._steps().indexOf("kiosk"); e._render();
+  ok("Visual settings: a header toggle, and a note that it only applies on small screens like the Echo", e.querySelector("h2").textContent==="Visual settings" && JSON.stringify([...e.querySelectorAll("ha-form")].map(f=>f.schema&&f.schema.map(x=>x.name))).includes("hide_header") && JSON.stringify([...e.querySelectorAll("ha-form")].map(f=>f.schema&&f.schema.map(x=>x.name))).includes("header_users") && e.textContent.includes("only hidden on small screens"));
+  e._step=e._steps().indexOf("deps"); e._render(); ok("The first step lists the optional kiosk-mode card", e.textContent.includes("kiosk-mode (optional)"));
+  e._step=e._steps().indexOf("navbar"); e._render();
+  const fields=()=>JSON.stringify([...e.querySelectorAll("ha-form")].map(f=>f.schema&&f.schema.map(x=>x.name)));
+  ok("The Navigation step has the navbar picture choice and, while the navbar is shown, the light shortcut", e.querySelector("h2").textContent==="Navigation" && fields().includes("light_entity") && e.querySelectorAll("img.shot").length===2);
+  e._config.navbar.hide=true; e._render();
+  ok("With the navbar hidden the light shortcut is dropped and a note explains swipe navigation", !fields().includes("light_entity") && e.textContent.includes("hass-swipe-navigation") && e.textContent.includes("Kiosk Satellite shortcuts live in the navbar")); }
+{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+  e.setConfig({type:"custom:bedside-clock-setup-card"}); e._step=e._steps().indexOf("background"); e._render(); await new Promise(r=>setTimeout(r,100));
+  const inputs=[...e.querySelectorAll(".palrow input[type=color]")];
+  ok("Background step shows the 5 picked colours with pickers for a gradient", inputs.length===5 && e.textContent.includes("Picked automatically") && !e.textContent.includes("Reset to automatic"));
+  inputs[0].value="#ff0000"; inputs[0].dispatchEvent(new Event("input"));
+  ok("Changing a colour is saved as an override", e._config.palette_override.accent==="#FF0000");
+  e._render(); await new Promise(r=>setTimeout(r,100));
+  ok("The chosen colour shows after re-render, with a reset button", e.querySelector(".palrow input").value==="#ff0000" && e.textContent.includes("Reset to automatic"));
+  [...e.querySelectorAll("button")].find(b=>b.textContent.includes("Reset to automatic")).click(); await new Promise(r=>setTimeout(r,100));
+  ok("Reset clears the overrides", Object.keys(e._config.palette_override).length===0 && e.querySelector(".palrow input").value!=="#ff0000");
+  e._change(c=>{c.background="none";},true); ok("No colour section when there is no background", !e.querySelector(".palette")); }
+{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+  e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device="echo_show_8"; e._config.pages.home.layout="controls3"; e._config.pages.home.quick_buttons=[{entity:"sensor.temp"},{entity:"input_number.level"},{entity:"light.a"},{entity:""}];
+  e._step=e._steps().indexOf("home"); e._render();
+  const names=[...e.querySelectorAll("ha-form")].map(f=>f.schema.map(x=>x.name).join());
+  ok("Home cards: sensors and numbers get a Show as choice, lights do not", names.filter(n=>n.includes("display")).length===2 && !names[names.length-1].includes("display"));
+  const f=[...e.querySelectorAll("ha-form")].find(f=>f.schema.some(x=>x.name==="display"));
+  ok("A sensor defaults to Graph in that choice, a number to Current value", f.data.display==="graph" && [...e.querySelectorAll("ha-form")].filter(f=>f.schema.some(x=>x.name==="display"))[1].data.display==="value");
+  f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{...f.data,display:"value"}}}));
+  ok("Choosing Current value is saved", e._config.pages.home.quick_buttons[0].display==="value"); }
+{ const hs={states:{"select.t8_calendar_view":{state:"Closed",attributes:{}},"select.t8_camera_view":{state:"Closed",attributes:{}},"button.t8_show_cameras":{state:"unknown",attributes:{}}}, callWS: async()=>({})};
+  const e=document.createElement("bedside-clock-setup-card"); e.hass=hs; document.getElementById("host").appendChild(e);
+  e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.pages.calendar.enabled=true; e._config.pages.cameras.enabled=true; e._config.pages.timer.enabled=true;
+  e._step=e._steps().indexOf("calendar"); e._render();
+  ok("Without Kiosk Satellite the Calendar step has no source choice", e.querySelectorAll(".tile").length===0);
+  e._step=e._steps().indexOf("satellite"); e._render(); qa2(e)[1].click();
+  ok("Choosing Yes asks for a Kiosk Satellite device and blocks Next until one is picked", e._config.kiosk_satellite.enabled && JSON.stringify([...e.querySelectorAll("ha-form")].map(f=>f.schema.map(x=>x.name))).includes("device") && e._validate("satellite")!=="");
+  e._config.kiosk_satellite.entity="select.t8_camera_view"; e._render();
+  ok("The entities found on the device are listed", e.textContent.includes("Calendar view (select.t8_calendar_view)") && e.textContent.includes("1 camera view button"));
+  e._step=e._steps().indexOf("calendar"); e._render();
+  ok("Each page can use the Home Assistant Dashboard or the built-in Kiosk Satellite", [...e.querySelectorAll(".tile .t")].map(t=>t.textContent).join()==="Home Assistant Dashboard,Built-in Kiosk Satellite");
+  [...e.querySelectorAll(".tile")][1].click();
+  ok("Choosing built-in fills the Calendar view entity from the device and shows the view choice", e._config.pages.calendar.source==="kiosk_satellite" && e._config.pages.calendar.ks_entity==="select.t8_calendar_view" && JSON.stringify([...e.querySelectorAll("ha-form")].map(f=>f.schema.map(x=>x.name))).includes("ks_view") && e._validate("calendar")==="");
+  e._step=e._steps().indexOf("cameras"); e._render(); [...e.querySelectorAll(".tile")][1].click();
+  ok("Cameras: built-in fills the Show button and drops the camera list", e._config.pages.cameras.ks_entity==="button.t8_show_cameras" && JSON.stringify([...e.querySelectorAll("ha-form")].map(f=>f.schema.map(x=>x.name)))==='[["ks_entity"]]');
+  e._step=e._steps().indexOf("timer"); e._render(); [...e.querySelectorAll(".tile")][1].click();
+  ok("Timer: built-in needs no entity and explains it", e._config.pages.timer.source==="kiosk_satellite" && e.textContent.includes("ks://timers") && e.querySelectorAll("ha-form").length===0 && e._validate("timer")==="");
+  e._step=e._steps().indexOf("climate"); e._config.pages.climate.enabled=true; e._step=e._steps().indexOf("climate"); e._render();
+  ok("Climate step says the pop-up only works with the navbar", e.textContent.includes("only works with the navbar")); }
+{ const hs={states:{"select.t8_camera_view":{state:"Closed",attributes:{}},"button.t8_show_temp":{state:"unknown",attributes:{friendly_name:"T8 Show TEMP"}},"button.t8_show_garden":{state:"unknown",attributes:{friendly_name:"T8 Show Garden"}},"button.t8_show_music_library":{state:"unknown",attributes:{friendly_name:"T8 Show Music Library"}},"button.t8_close_camera_view":{state:"unknown",attributes:{}}}, callWS: async()=>({})};
+  const e=document.createElement("bedside-clock-setup-card"); e.hass=hs; document.getElementById("host").appendChild(e);
+  e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.pages.cameras.enabled=true; e._config.kiosk_satellite={enabled:true,entity:"select.t8_camera_view"};
+  e._step=e._steps().indexOf("cameras"); e._render(); [...e.querySelectorAll(".tile")][1].click();
+  const f=e.querySelector("ha-form"); const opts=f.schema[0].selector.select.options;
+  ok("Cameras: the camera views of the device are offered by name, without the music button", opts.map(o=>o.label).sort().join()==="Garden,TEMP" && opts.length===2);
+  ok("Cameras: the first view is chosen to start with", e._config.pages.cameras.ks_entity.startsWith("button.t8_show_") && !e._config.pages.cameras.ks_entity.includes("music"));
+  f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{ks_entity:"button.t8_show_garden"}}}));
+  ok("Cameras: picking another view saves its button", e._config.pages.cameras.ks_entity==="button.t8_show_garden"); }
+{ const states={"select.k_calendar_view":{state:"Closed",attributes:{}},"select.k_camera_view":{state:"Closed",attributes:{}},"button.k_show_temp":{state:"unknown",attributes:{friendly_name:"K Show TEMP"}},"button.k_show_garden":{state:"unknown",attributes:{friendly_name:"K Show Garden"}},"button.k_show_music_library":{state:"unknown",attributes:{}},"sensor.other_battery":{state:"1",attributes:{}}};
+  const entities=Object.fromEntries(Object.keys(states).map(id=>[id,{entity_id:id,device_id:id==="sensor.other_battery"?"dev2":"dev1"}]));
+  const hs={states,entities,callWS:async()=>({})};
+  const mk=(ks)=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass=hs; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device="echo_show_8"; e._config.pages.home.layout="controls4"; e._config.pages.home.quick_buttons=[{entity:"sensor.temp"},{entity:"light.a"},{entity:"switch.c"},{entity:"switch.d"}]; e._config.kiosk_satellite=ks; e._step=e._steps().indexOf("home"); e._render(); return e; };
+  const cf=(e)=>[...e.querySelectorAll(".cardbox ha-form")]; const sw=(e,i)=>e.querySelectorAll(".cardbox")[i].querySelector(".kstoggle .kswitch"); const isOn=(e,i)=>sw(e,i).classList.contains("on"); const flip=(e,i,on)=>{ if(isOn(e,i)!==on) sw(e,i).click(); };
+  const names=(f)=>f.schema.map(x=>x.name).join();
+  const set=(f,patch)=>f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{...f.data,...patch}}}));
+  const e=mk({enabled:true,device:"dev1",entity:""});
+  ok("Each card has an 'Open a Kiosk Satellite view' switch above its fields; off, the Home Assistant entity picker is there", cf(e).length===4 && [0,1,2,3].every(i=>sw(e,i)&&isOn(e,i)===false && sw(e,i).getAttribute("aria-checked")==="false" && e.querySelectorAll(".kstoggle")[i].textContent==="Open a Kiosk Satellite view") && cf(e).every(f=>names(f)==="entity,name,icon"||names(f)==="entity,name,icon,display"));
+  ok("Without Kiosk Satellite there is no toggle, just the entity picker", (()=>{ const x=mk({enabled:false,device:"",entity:""}); return x.querySelectorAll(".kstoggle").length===0 && cf(x).every(f=>names(f).includes("entity")); })());
+  flip(e,0,true);
+  ok("Turning it on shows the view dropdown instead of the entity picker, starting on Calendar", isOn(e,0)===true && sw(e,0).getAttribute("aria-checked")==="true" && names(cf(e)[0])==="shortcut,name,icon" && e._config.pages.home.quick_buttons[0].shortcut==="calendar" && cf(e)[0].schema[0].selector.select.options.length===7);
+  set(cf(e)[0],{shortcut:"cameras"});
+  ok("The Camera view choice adds a camera view dropdown, by name, starting on the first view", names(cf(e)[0])==="shortcut,shortcut_view,name,icon" && cf(e)[0].schema[1].selector.select.options.map(o=>o.label).sort().join()==="Garden,TEMP" && e._config.pages.home.quick_buttons[0].shortcut_view.startsWith("button.k_show_"));
+  set(cf(e)[0],{shortcut:"timers"});
+  ok("Picking another view drops the camera view choice", names(cf(e)[0])==="shortcut,name,icon" && !("shortcut_view" in e._config.pages.home.quick_buttons[0]));
+  flip(e,0,false);
+  ok("Turning it off brings the entity picker back, with the entity from before, and clears the view", isOn(e,0)===false && names(cf(e)[0])==="entity,name,icon" && e._config.pages.home.quick_buttons[0].entity==="sensor.temp" && !("shortcut" in e._config.pages.home.quick_buttons[0])); }
+{ const states={"select.k_calendar_view":{state:"Closed",attributes:{}},"select.k_camera_view":{state:"Closed",attributes:{}},"button.k_show_temp":{state:"unknown",attributes:{friendly_name:"K Show TEMP"}},"sensor.other_battery":{state:"1",attributes:{}}};
+  const entities=Object.fromEntries(Object.keys(states).map(id=>[id,{entity_id:id,device_id:id==="sensor.other_battery"?"dev2":"dev1"}]));
+  const e=document.createElement("bedside-clock-setup-card"); e.hass={states,entities,callWS:async()=>({})}; document.getElementById("host").appendChild(e);
+  e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.kiosk_satellite={enabled:true,device:"",entity:""}; e._step=e._steps().indexOf("satellite"); e._render();
+  const f=e.querySelector("ha-form");
+  ok("The Kiosk Satellite step asks for the device (not an entity), from the ESPHome integration", f.schema.length===1 && f.schema[0].name==="device" && f.schema[0].selector.device.integration==="esphome" && e._validate("satellite")==="Choose your Kiosk Satellite device.");
+  f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{device:"dev1"}}}));
+  ok("Choosing the device lists its Calendar view and camera view entities and lets you continue", e._config.kiosk_satellite.device==="dev1" && e._validate("satellite")==="" && e.textContent.includes("Calendar view (select.k_calendar_view)") && e.textContent.includes("1 camera view button"));
+  e._step=e._steps().indexOf("calendar"); e._config.pages.calendar.enabled=true; e._step=e._steps().indexOf("calendar"); e._render(); [...e.querySelectorAll(".tile")][1].click();
+  ok("The Calendar step fills its Calendar view entity from the chosen device", e._config.pages.calendar.ks_entity==="select.k_calendar_view"); }
+{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+  e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device="echo_show_8"; e._config.pages.home.layout="controls"; e._config.kiosk_satellite={enabled:true,device:"d",entity:""}; e._config.pages.home.quick_buttons=[{shortcut:"timers"},{entity:"light.a"}]; e._step=e._steps().indexOf("home"); e._render();
+  ok("Card 1, Card 2 are headings, each in its own box", [...e.querySelectorAll("h3")].map(h=>h.textContent).join()==="Navbar icon,Card 1,Card 2" && e.querySelectorAll(".cardbox").length===2 && [...e.querySelectorAll(".cardbox")].every(b=>b.querySelector("h3")&&b.querySelector("ha-form")));
+  const nameLabel=(f)=>f.schema.find(x=>x.name==="name").label||"entity default";
+  const forms=[...e.querySelectorAll(".cardbox ha-form")];
+  ok("A view card's Name label refers to the view, an entity card's to the entity", nameLabel(forms[0]).includes("name of the view") && nameLabel(forms[1])==="entity default"); }
+{ // as in the dashboard editor: Home Assistant gets each config-changed event and hands the config straight back with setConfig
+  const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+  const first={type:"custom:bedside-clock", configured:true, device:"echo_show_8", kiosk_satellite:{enabled:true,device:"d1",entity:""}, pages:{home:{enabled:true,layout:"controls4",quick_buttons:[{entity:"light.a"},{shortcut:"timers"},{entity:"switch.c"},{entity:"switch.d"}]}}};
+  e.addEventListener("config-changed",(ev)=>{ e.setConfig(JSON.parse(JSON.stringify(ev.detail.config))); });
+  e.setConfig(first); e._step=e._steps().indexOf("home"); e._render();
+  const sw=(i)=>e.querySelectorAll(".cardbox")[i].querySelector(".kswitch"); const names=(i)=>[...e.querySelectorAll(".cardbox")[i].querySelectorAll("ha-form")].map(f=>f.schema.map(x=>x.name).join()).join();
+  ok("Editor mode: the switches show each card's state", sw(0).classList.contains("on")===false && sw(1).classList.contains("on")===true && !e._standalone);
+  sw(0).click();
+  ok("Editor mode: turning a card's switch on works and survives Home Assistant handing the config back", sw(0).classList.contains("on")===true && names(0)==="shortcut,name,icon" && e._config.pages.home.quick_buttons[0].shortcut==="calendar");
+  sw(1).click();
+  ok("Editor mode: turning a switch off brings the entity picker back, and each switch is independent", sw(1).classList.contains("on")===false && names(1)==="entity,name,icon" && sw(0).classList.contains("on")===true && !("shortcut" in e._config.pages.home.quick_buttons[1]));
+  e.querySelectorAll(".cardbox")[0].querySelector(".kstoggle span").click();
+  ok("Editor mode: clicking the label text switches it too", sw(0).classList.contains("on")===false); }
+{ const { normaliseConfig } = await import("../dist/bedside-clock-strategy.js"); // Home Assistant keeps the config it gave us and compares it with what we send back (Save is only enabled when they differ)
+  const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+  const original={type:"custom:bedside-clock", configured:true, device:"echo_show_8", kiosk_satellite:{enabled:true,device:"d1",entity:""}, pages:{home:{enabled:true,layout:"controls4",quick_buttons:[{entity:"light.a"},{shortcut:"timers"},{entity:"switch.c"},{entity:"switch.d"}]},cameras:{enabled:true,cameras:[{entity:"camera.a"}]}}};
+  const snapshot=JSON.stringify(original); const sent=[];
+  e.addEventListener("config-changed",(ev)=>{ sent.push(ev.detail.config); });
+  e.setConfig(original); e._step=e._steps().indexOf("home"); e._render();
+  e.querySelectorAll(".cardbox")[0].querySelector(".kswitch").click();
+  e._step=e._steps().indexOf("cameras"); e._render(); [...e.querySelectorAll("button")].find(b=>b.textContent==="Add camera").click();
+  ok("Editing never changes the config Home Assistant handed us, so it sees a difference and enables Save", JSON.stringify(original)===snapshot && sent.length===2 && JSON.stringify(sent[sent.length-1])!==snapshot);
+  ok("Each config sent back is a copy of its own, later edits do not change earlier ones", sent[0].pages.home.quick_buttons[0].shortcut==="calendar" && sent[1].pages.home.quick_buttons[1].shortcut==="timers" && sent[0].pages.cameras.cameras.length===1 && sent[1].pages.cameras.cameras.length===2);
+  const x=normaliseConfig(original); x.pages.home.quick_buttons.push({entity:"x"}); x.pages.cameras.cameras.length=0;
+  ok("normaliseConfig shares nothing with the config it was given", JSON.stringify(original)===snapshot); }
+{ // free navigation once set up
+  const mk=(cfg)=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig(cfg); e._step=0; e._render(); return e; };
+  const first=mk({type:"custom:bedside-clock"}); const set=mk({type:"custom:bedside-clock", configured:true});
+  ok("First time through: only the steps already reached can be clicked", first.querySelectorAll(".dot.visited").length===1);
+  const n=set.querySelectorAll(".dot").length;
+  ok("Once set up: every step can be clicked", set.querySelectorAll(".dot.visited").length===n);
+  set.querySelectorAll(".dot")[n-2].click();
+  ok("Clicking any step goes straight to it", set._step===n-2);
+  set._config.pages.baby.enabled=true; set._config.pages.baby.camera=""; set._step=set._steps().indexOf("review"); set._render();
+  const fixes=[...set.querySelectorAll("button.fix")];
+  ok("The review lists steps left incomplete, each a button that goes to that step", fixes.length===1 && fixes[0].textContent.startsWith("Baby monitor page: Choose a camera") && (fixes[0].click(), set._steps()[set._step]==="baby")); }
+{ // typing in a box: the editor echoes each change back with setConfig, and the page must not be drawn again (the cursor would leave the box)
+  const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e);
+  const first={type:"custom:bedside-clock", configured:true, device:"echo_show_8", kiosk_satellite:{enabled:true,device:"d1",entity:""}, pages:{home:{enabled:true,layout:"controls4",quick_buttons:[{entity:"light.a"},{entity:"switch.b"},{entity:"switch.c"},{entity:"switch.d"}]}}};
+  let echoes=0; e.addEventListener("config-changed",(ev)=>{ echoes++; e.setConfig(JSON.parse(JSON.stringify(ev.detail.config))); });
+  e.setConfig(first); e._step=e._steps().indexOf("home"); e._render();
+  const form=()=>e.querySelectorAll(".cardbox ha-form")[0];
+  const before=form();
+  let typed="";
+  for (const ch of "Lamp") { typed+=ch; const f=form(); f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{...f.data,name:typed}}})); }
+  ok("Typing a name: the page is not drawn again after each letter, so the box keeps its focus", echoes===4 && form()===before && e._config.pages.home.quick_buttons[0].name==="Lamp");
+  e.setConfig({...JSON.parse(JSON.stringify(first)), device:"echo_show_5"});
+  ok("A real change from outside (for example editing the YAML) still redraws the page", form()!==before && e._config.device==="echo_show_5");
+  let last=null; e.addEventListener("config-changed",(ev)=>{ last=ev.detail.config; });
+  { const f=form(); f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{...f.data,name:"Lamps"}}})); }
+  const reorder=(v)=>Array.isArray(v)?v.map(reorder):(v&&typeof v==="object"?Object.fromEntries(Object.keys(v).reverse().map(k=>[k,reorder(v[k])])):v);
+  const f2=form(); e.setConfig(reorder(JSON.parse(JSON.stringify(last))));
+  ok("An echo with its keys in another order still counts as the echo, and the page is not drawn again", form()===f2); }
+{ const mk=(dev)=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device=dev; e._config.pages.home.layout="controls3"; e._config.pages.home.quick_buttons=[{entity:"sensor.temp"},{entity:"input_number.level"},{entity:"number.x"},{entity:"light.a"}]; e._step=e._steps().indexOf("home"); e._render(); return e; };
+  const hasDisplay=(e)=>[...e.querySelectorAll(".cardbox")].map(b=>[...b.querySelectorAll("ha-form")].some(f=>f.schema.some(x=>x.name==="display")));
+  ok("Echo Show 5: only a sensor gets the graph or value choice, numbers do not", hasDisplay(mk("echo_show_5")).join()==="true,false,false");
+  ok("Echo Show 8: sensors and numbers both get the choice", hasDisplay(mk("echo_show_8")).join()==="true,true,true"); }
+{ const mk=(dev,layout)=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device=dev; e._config.pages.home.layout=layout; e._config.pages.home.quick_buttons=[{entity:"light.a"},{entity:"light.b"},{entity:"light.c"},{entity:"light.d"},{entity:"light.e"}]; e._step=e._steps().indexOf("home"); e._render(); return e; };
+  const tiles=(e)=>[...e.querySelectorAll(".tiles .tile .t")].map(t=>t.textContent).join();
+  const cards=(e)=>[...e.querySelectorAll("h3")].map(h=>h.textContent).filter(t=>/^Card [0-9]$/.test(t)).length;
+  ok("Both screens offer Clock, then 2, 3 and 4 cards", tiles(mk("echo_show_8","clock"))==="Clock,Clock + 2 Cards,Clock + 3 Cards,Clock + 4 Cards" && tiles(mk("echo_show_5","clock"))==="Clock,Clock + 2 Cards,Clock + 3 Cards,Clock + 4 Cards");
+  ok("Each layout shows that many card boxes", cards(mk("echo_show_8","controls"))===2 && cards(mk("echo_show_8","controls3"))===3 && cards(mk("echo_show_8","controls4"))===4 && cards(mk("echo_show_5","controls3"))===3);
+  const e=mk("echo_show_8","clock"); [...e.querySelectorAll(".tile")][2].click();
+  ok("Choosing Clock + 3 Cards adds a second home screen with 3 card boxes; Clock stays the first", e._config.pages.home.screens.map(x=>x.layout).join()==="clock,controls3" && e._config.pages.home.layout==="clock" && cards(e)===3 && [...e.querySelectorAll(".tile")].filter(t=>t.classList.contains("sel")).length===2);
+  [...e.querySelectorAll(".tile")][0].click();
+  ok("Choosing Clock again removes it, and Clock + 3 Cards becomes the first (Home) screen", e._config.pages.home.screens.map(x=>x.layout).join()==="controls3" && e._config.pages.home.layout==="controls3");
+  [...e.querySelectorAll(".tile")][2].click();
+  ok("The last home screen cannot be removed", e._config.pages.home.screens.length===1 && e._config.pages.home.layout==="controls3");
+  [...e.querySelectorAll(".tile")][3].click(); [...e.querySelectorAll(".tile")][1].click();
+  ok("Several home screens: each one has its own cards, headed Home, Home 2, Home 3; the tiles show their order", e._config.pages.home.screens.map(x=>x.layout).join()==="controls3,controls4,controls" && cards(e)===9 && [...e.querySelectorAll("h3")].map(h=>h.textContent).filter(t=>/^Home/.test(t)).join("|")==="Home: Clock + 3 Cards|Home 2: Clock + 4 Cards|Home 3: Clock + 2 Cards" && [...e.querySelectorAll(".tiles .tile .t")].map(t=>t.textContent).join("|").includes("✓ 3"));
+  e._config.pages.home.screens[1].quick_buttons[0]={entity:"light.second"}; e._step=e._steps().indexOf("home"); e._render();
+  ok("Cards are kept per screen: changing the second screen leaves the first alone", e._config.pages.home.screens[0].quick_buttons[0].entity!=="light.second" && e._config.pages.home.screens[1].quick_buttons[0].entity==="light.second" && e._config.pages.home.quick_buttons===e._config.pages.home.screens[0].quick_buttons); }
+{ const mk=(dev,layout)=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{}, callWS: async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device=dev; e._config.pages.home.layout=layout; e._config.pages.home.quick_buttons=[{entity:"sensor.a",display:"graph"},{entity:"input_number.d"},{entity:"light.c"},{entity:"sensor.b"}]; e._step=e._steps().indexOf("home"); e._render(); return e; };
+  const dd=(e)=>[...e.querySelectorAll(".cardbox")].map(b=>[...b.querySelectorAll("ha-form")].some(f=>f.schema.some(x=>x.name==="display"))).join();
+  ok("With four cards there is no graph choice for any card, on either screen", dd(mk("echo_show_8","controls4"))==="false,false,false,false" && dd(mk("echo_show_5","controls4"))==="false,false,false,false");
+  ok("With two or three cards the choice is still there for sensors (and a number on the Show 8)", dd(mk("echo_show_8","controls3"))==="true,true,false" && dd(mk("echo_show_8","controls"))==="true,true" && dd(mk("echo_show_5","controls3"))==="true,false,false");
+  const e=mk("echo_show_8","controls3"); [...e.querySelectorAll(".tile")][3].click(); [...e.querySelectorAll(".tile")][2].click();
+  ok("Switching to four cards takes the graph choice away", dd(e)==="false,false,false,false"); }
+{ const states={"select.k_calendar_view":{state:"Closed",attributes:{}},"select.k_camera_view":{state:"Closed",attributes:{}},"button.k_show_temp":{state:"unknown",attributes:{friendly_name:"K Show TEMP"}},"button.k_show_garden":{state:"unknown",attributes:{friendly_name:"K Show Garden"}}};
+  const entities=Object.fromEntries(Object.keys(states).map(id=>[id,{entity_id:id,device_id:"dev1"}]));
+  const mk=(ks,dev="echo_show_8")=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states,entities,callWS:async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device=dev; e._config.kiosk_satellite=ks; e._step=e._steps().indexOf("navbar"); e._render(); return e; };
+  const shots=(e)=>[...e.querySelectorAll("img.shot")].map(x=>x.src);
+  const a8=mk({enabled:false,device:"",entity:""}), a5=mk({enabled:false,device:"",entity:""},"echo_show_5");
+  ok("The pictures follow the device: the Show 5 and the Show 8 have their own", shots(a8).length===2 && shots(a5).length===2 && shots(a8)[0]!==shots(a5)[0] && shots(a8)[0]!==shots(a8)[1]);
+  [...a8.querySelectorAll(".tile")][1].click();
+  ok("Choosing No navbar is saved", a8._config.navbar.hide===true && [...a8.querySelectorAll(".tile")][1].classList.contains("sel"));
+  [...a8.querySelectorAll(".tile")][0].click();
+  ok("Choosing Navbar again is saved", a8._config.navbar.hide===false);
+  ok("Without Kiosk Satellite there are no Kiosk Satellite shortcuts", !a8.textContent.includes("Kiosk Satellite shortcuts") && ![...a8.querySelectorAll("button")].some(b=>b.textContent==="Add shortcut"));
+  const e=mk({enabled:true,device:"dev1",entity:""});
+  ok("With Kiosk Satellite on, the step lists Kiosk Satellite shortcuts with an Add shortcut button", e.textContent.includes("Kiosk Satellite shortcuts") && [...e.querySelectorAll("button")].some(b=>b.textContent==="Add shortcut") && e.querySelectorAll(".cardbox").length===0);
+  [...e.querySelectorAll("button")].find(b=>b.textContent==="Add shortcut").click();
+  const f=()=>e.querySelector(".cardbox ha-form"); const names=()=>f().schema.map(x=>x.name).join();
+  ok("Add shortcut makes a box starting on Calendar, with the view, label and icon", e.querySelectorAll(".cardbox").length===1 && e._config.navbar.shortcuts[0].view==="calendar" && names()==="view,name,icon" && f().schema[0].selector.select.options.length===7);
+  f().dispatchEvent(new CustomEvent("value-changed",{detail:{value:{...f().data,view:"cameras"}}}));
+  ok("The Camera view choice adds a camera view dropdown by name, starting on the first view", names()==="view,shortcut_view,name,icon" && f().schema[1].selector.select.options.map(o=>o.label).sort().join()==="Garden,TEMP" && e._config.navbar.shortcuts[0].shortcut_view.startsWith("button.k_show_"));
+  f().dispatchEvent(new CustomEvent("value-changed",{detail:{value:{...f().data,view:"alarms",name:"Alarms"}}}));
+  ok("Another view drops the camera choice and keeps the label", names()==="view,name,icon" && e._config.navbar.shortcuts[0].view==="alarms" && !("shortcut_view" in e._config.navbar.shortcuts[0]) && e._config.navbar.shortcuts[0].name==="Alarms");
+  [...e.querySelectorAll("button")].find(b=>b.textContent==="Add shortcut").click();
+  ok("Shortcuts can be added more than once, and each can be removed", e.querySelectorAll(".cardbox").length===2 && ([...e.querySelectorAll(".cardbox")[0].querySelectorAll("button")].find(b=>b.textContent==="Remove").click(), e._config.navbar.shortcuts.length===1 && e.querySelectorAll(".cardbox").length===1 && e._config.navbar.shortcuts[0].view==="calendar"));
+  e._step=e._steps().indexOf("review"); e._render();
+  ok("The review mentions the shortcuts", e.textContent.includes("1 Kiosk Satellite shortcut"));
+  e._config.navbar.hide=true; e._step=e._steps().indexOf("navbar"); e._render();
+  ok("With the navbar hidden the shortcuts section is not shown", !e.textContent.includes("Add shortcut")); }
+{ const mk=(dev)=>{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{},entities:{},callWS:async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"}); e._config.device=dev; e._config.pages.cameras.enabled=true; e._step=e._steps().indexOf("cameras"); e._render(); return e; };
+  const names=(e)=>JSON.stringify([...e.querySelectorAll("ha-form")].map(f=>f.schema&&f.schema.map(x=>x.name)));
+  const e8=mk("echo_show_8"), e5=mk("echo_show_5");
+  ok("Cameras step: the Echo Show 8 offers a layout choice (swipe or 2 column grid); the Show 5 does not", names(e8).includes("layout") && !names(e5).includes("layout"));
+  const f=[...e8.querySelectorAll("ha-form")].find(x=>x.schema&&x.schema.some(y=>y.name==="layout")); f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{layout:"grid"}}}));
+  ok("Choosing the grid is saved", e8._config.pages.cameras.layout==="grid"); }
+{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{},entities:{},callWS:async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"});
+  e._config.pages.home.enabled=true; e._config.pages.weather.enabled=true; e._config.pages.timer.enabled=true; e._step=e._steps().indexOf("pages"); e._render();
+  const names=()=>[...e.querySelectorAll(".orow .n")].map(x=>x.textContent.replace(/^\d+\. /,"")).join();
+  const btn=(i,t)=>[...e.querySelectorAll(".orow")][i].querySelectorAll("button")[t==="up"?0:1];
+  ok("Pages step: the chosen pages are listed in order, the first has no Up and the last no Down", names()==="Home,Weather,Timer" && btn(0,"up").disabled && btn(2,"down").disabled && !btn(1,"up").disabled);
+  btn(1,"up").click();
+  ok("Up moves a page earlier; the saved order and the wizard steps follow it", names()==="Weather,Home,Timer" && e._config.page_order.indexOf("weather")<e._config.page_order.indexOf("home") && e._steps().filter(s=>["home","weather","timer"].includes(s)).join()==="weather,home,timer");
+  btn(1,"down").click();
+  ok("Down moves a page later, past pages that are switched off", names()==="Weather,Timer,Home" && e._config.page_order.indexOf("timer")<e._config.page_order.indexOf("home")); }
+{ const states={"select.old_calendar_view":{state:"unavailable",attributes:{}},"select.kd_calendar_view":{state:"Closed",attributes:{}},"button.kd_show_cameras":{state:"unknown",attributes:{friendly_name:"KD Show Cameras"}}};
+  const entities={"select.kd_calendar_view":{entity_id:"select.kd_calendar_view",device_id:"kd"},"button.kd_show_cameras":{entity_id:"button.kd_show_cameras",device_id:"kd"},"select.old_calendar_view":{entity_id:"select.old_calendar_view",device_id:"old"}};
+  const e=document.createElement("bedside-clock-setup-card"); e.hass={states,entities,callWS:async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"});
+  Object.assign(e._config.kiosk_satellite,{enabled:true,device:"old"}); Object.assign(e._config.pages.calendar,{enabled:true,source:"kiosk_satellite",ks_entity:"select.old_calendar_view"}); e._config.pages.home.screens=[{layout:"controls",quick_buttons:[{shortcut:"cameras",shortcut_view:"button.old_show_x"}]}]; e._config.navbar.shortcuts=[{view:"cameras",shortcut_view:"button.old_show_x"}];
+  e._step=e._steps().indexOf("satellite"); e._render();
+  const f=[...e.querySelectorAll("ha-form")].find(x=>x.schema&&x.schema.some(y=>y.name==="device")); f.dispatchEvent(new CustomEvent("value-changed",{detail:{value:{device:"kd"}}}));
+  ok("Choosing another Kiosk Satellite device looks the Calendar and camera entities up again on the new device (nothing is left from the old one)", e._config.pages.calendar.ks_entity==="select.kd_calendar_view" && e._config.pages.home.screens[0].quick_buttons[0].shortcut_view==="button.kd_show_cameras" && e._config.navbar.shortcuts[0].shortcut_view==="button.kd_show_cameras"); }
+{ const e=document.createElement("bedside-clock-setup-card"); e.hass={states:{},entities:{},callWS:async()=>({})}; document.getElementById("host").appendChild(e); e.setConfig({type:"custom:bedside-clock-setup-card"});
+  e._config.device="echo_show_8"; e._config.pages.home.screens=[{layout:"clock",quick_buttons:[]},{layout:"controls",quick_buttons:[]}]; e._step=e._steps().indexOf("home"); e._render();
+  const iconForms=()=>[...e.querySelectorAll("ha-form")].filter(f=>f.schema&&f.schema.length===1&&f.schema[0].name==="icon");
+  ok("Home step: every home screen has an icon picker for its navbar button, even the one without cards", iconForms().length===2 && iconForms()[0].schema[0].selector.icon!==undefined);
+  iconForms()[1].dispatchEvent(new CustomEvent("value-changed",{detail:{value:{icon:"mdi:bed"}}}));
+  iconForms()[0].dispatchEvent(new CustomEvent("value-changed",{detail:{value:{icon:"mdi:sofa"}}}));
+  ok("Each screen's icon is saved on that screen", e._config.pages.home.screens[1].icon==="mdi:bed" && e._config.pages.home.screens[0].icon==="mdi:sofa"); }
+document.getElementById("out").textContent=res.join("\n");
+</script>

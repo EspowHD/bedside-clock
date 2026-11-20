@@ -1,0 +1,14 @@
+﻿# Local-only test/preview scaffolding and scratch files
+test/gen_*.html
+test/preview.html
+test/hass_min.json
+*.bak
+*.backup.json
+node_modules/
+
+# local preview images
+/show5_*.png
+
+# Local demo build, backups of the maintainer's dashboards (personal details)
+/demo/
+test/gen8.html
