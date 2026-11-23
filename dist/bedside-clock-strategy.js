@@ -1130,7 +1130,7 @@ function babyView(cfg, base) {
 }
 
 // the widest screen that counts as an Echo (the Show 8 is 962px wide); wider windows, such as a desktop, keep the header
-const KIOSK_MEDIAQUERY = "(max-width: 1000px)";
+const KIOSK_MAX_WIDTH = 1000;
 const camerasGrid = (cfg) => cfg.device === "echo_show_8" && cfg.pages.cameras.layout === "grid";
 
 function camerasView(cfg, base) {
@@ -1716,9 +1716,9 @@ export function generateDashboard(rawConfig, hass, missingOverride, palette) {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    result.kiosk_mode = { user_settings: [{ mediaquery: KIOSK_MEDIAQUERY, hide_header: true }] };
+    result.kiosk_mode = { mobile_settings: { custom_width: KIOSK_MAX_WIDTH, hide_header: true } }; // kiosk-mode has no media queries, and every user_settings entry needs users
     // the listed users still see the header (a later setting wins)
-    if (users.length) result.kiosk_mode.user_settings.push({ users, hide_header: false });
+    if (users.length) result.kiosk_mode.user_settings = [{ users, hide_header: false, ignore_mobile_settings: true }]; // mobile_settings are applied last, so these users opt out of them
   }
   return result;
 }
